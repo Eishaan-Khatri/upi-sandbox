@@ -19,6 +19,10 @@ class Store(context: Context) {
         get() = prefs.getBoolean("sms", false)
         set(v) = prefs.edit().putBoolean("sms", v).apply()
 
+    var kioskEnabled: Boolean
+        get() = prefs.getBoolean("kiosk", true)
+        set(v) = prefs.edit().putBoolean("kiosk", v).apply()
+
     private fun today() = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
 
     private fun rollDay() {

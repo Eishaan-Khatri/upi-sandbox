@@ -32,6 +32,10 @@ class MainActivity : Activity() {
     private lateinit var smsButton: Button
     private lateinit var recentList: TextView
     private lateinit var seenList: TextView
+    private lateinit var adminPanel: LinearLayout
+    private lateinit var ownerStatus: TextView
+    private lateinit var kioskButton: Button
+    private var titleTaps = 0
     private val handler = Handler(Looper.getMainLooper())
     private val refresher = object : Runnable {
         override fun run() { refresh(); handler.postDelayed(this, 2000) }
@@ -42,17 +46,30 @@ class MainActivity : Activity() {
         store = Store(this)
         Speaker.init(this)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        Kiosk.applyPolicies(this)
 
         val col = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(24), dp(16), dp(24))
         }
 
-        col.addView(label("UPI Soundbox", 26f, bold = true))
+        // Tap the title 7 times to open the shop-owner / installer panel.
+        col.addView(label("UPI Soundbox", 26f, bold = true).apply {
+            setOnClickListener {
+                titleTaps++
+                if (titleTaps >= 7) {
+                    titleTaps = 0
+                    adminPanel.visibility = if (adminPanel.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+                    refresh()
+                }
+            }
+        })
+        adminPanel = buildAdminPanel()
+        col.addView(adminPanel)
         status = label("", 15f)
         col.addView(status)
         accessButton = button("Give notification access") {
-            startActivity(Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))
+            open(Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))
         }
         col.addView(accessButton)
 
@@ -79,11 +96,7 @@ class MainActivity : Activity() {
         }
         col.addView(smsButton)
         col.addView(button("Keep running (battery settings)") {
-            try {
-                startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
-            } catch (_: Exception) {
-                startActivity(Intent(Settings.ACTION_SETTINGS))
-            }
+            open(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
         })
         col.addView(button("Reset today's total") { store.resetToday(); refresh() })
 
@@ -99,10 +112,65 @@ class MainActivity : Activity() {
         setContentView(ScrollView(this).apply { addView(col) })
     }
 
-    override fun onResume() { super.onResume(); handler.post(refresher) }
+    override fun onResume() {
+        super.onResume()
+        Kiosk.enterIfNeeded(this)
+        handler.post(refresher)
+    }
     override fun onPause() { super.onPause(); handler.removeCallbacks(refresher) }
 
+    private fun buildAdminPanel(): LinearLayout {
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            setBackgroundColor(Color.rgb(255, 243, 205))
+        }
+        panel.addView(label("Setup panel", 18f, bold = true))
+        ownerStatus = label("", 14f)
+        panel.addView(ownerStatus)
+        kioskButton = button("") {
+            if (Store(this).kioskEnabled && Kiosk.isOwner(this)) Kiosk.exit(this)
+            else { Kiosk.setLocked(this, true); Kiosk.enterIfNeeded(this) }
+            refresh()
+        }
+        panel.addView(kioskButton)
+        panel.addView(button("Open phone Settings") { open(Intent(Settings.ACTION_SETTINGS)) })
+        panel.addView(button("Notification access settings") {
+            open(Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))
+        })
+        panel.addView(button("Open Play Store") { launch("com.android.vending") })
+        for ((pkg, name) in PaymentParser.UPI_APPS) {
+            if (packageManager.getLaunchIntentForPackage(pkg) != null) {
+                panel.addView(button("Open $name") { launch(pkg) })
+            }
+        }
+        if (Kiosk.isOwner(this)) {
+            panel.addView(button("Remove Device Owner (testing only)") {
+                Kiosk.removeOwner(this)
+                refresh()
+            })
+        }
+        return panel
+    }
+
+    private fun open(intent: Intent) {
+        if (Kiosk.isOwner(this) && Store(this).kioskEnabled) Kiosk.exit(this)
+        try { startActivity(intent) } catch (_: Exception) { }
+    }
+
+    private fun launch(pkg: String) {
+        packageManager.getLaunchIntentForPackage(pkg)?.let { open(it) }
+    }
+
     private fun refresh() {
+        val owner = Kiosk.isOwner(this)
+        ownerStatus.text = if (owner)
+            "Device Owner: YES. This phone is a dedicated soundbox." +
+                (if (store.kioskEnabled) " Kiosk is ON." else " Kiosk is OFF (other apps allowed).")
+        else "Device Owner: NO. Normal app mode (set up by QR after factory reset to lock it)."
+        kioskButton.visibility = if (owner) View.VISIBLE else View.GONE
+        kioskButton.text = if (store.kioskEnabled) "Unlock kiosk (to set up apps)" else "Lock kiosk again"
         val granted = hasNotificationAccess()
         status.text = if (granted) "✅ Listening for UPI payments" else "❌ Notification access is OFF. Tap the button below and turn on UPI Soundbox."
         status.setTextColor(if (granted) Color.rgb(0, 128, 60) else Color.RED)

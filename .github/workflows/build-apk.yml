@@ -4,6 +4,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -14,9 +17,44 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v4
-      - name: Build debug APK
-        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Restore signing key (if the KEYSTORE_BASE64 secret is set)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/soundbox.jks"
+            echo "KEYSTORE_FILE=$RUNNER_TEMP/soundbox.jks" >> "$GITHUB_ENV"
+          else
+            echo "No KEYSTORE_BASE64 secret: signing with a throwaway debug key."
+          fi
+
+      - name: Build APKs
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: ./gradlew --no-daemon assembleDebug assembleRelease
+
+      - name: Make Device Owner setup QR
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk upi-soundbox.apk
+          pip install --quiet "qrcode[pil]"
+          python tools/make_qr.py upi-soundbox.apk \
+            "https://github.com/${{ github.repository }}/releases/download/latest/upi-soundbox.apk"
+
       - uses: actions/upload-artifact@v4
         with:
-          name: upi-soundbox-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: upi-soundbox
+          path: |
+            upi-soundbox.apk
+            setup-qr.png
+            provisioning.json
+
+      - name: Publish to the "latest" release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view latest >/dev/null 2>&1 || \
+            gh release create latest --title "Latest build" --prerelease \
+              --notes "Built automatically from main. Install upi-soundbox.apk, or factory reset a phone and scan setup-qr.png to set it up as a dedicated soundbox."
+          gh release upload latest upi-soundbox.apk setup-qr.png provisioning.json --clobber
