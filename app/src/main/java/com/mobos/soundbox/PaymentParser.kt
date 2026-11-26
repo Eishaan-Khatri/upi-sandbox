@@ -1,8 +1,5 @@
 package com.mobos.soundbox
 
-/** A payment we believe was received. */
-data class Payment(val amount: Double, val source: String, val payer: String?)
-
 /**
  * Turns a notification (package + title + text) into a Payment, or null.
  * Only whitelisted packages are trusted: any app can post a fake-looking

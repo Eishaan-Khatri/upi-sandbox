@@ -3,7 +3,7 @@ package com.mobos.soundbox
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** Plain JVM tests for the parsers and the duplicate filter. Run: ./gradlew testDebugUnitTest */
+/** Plain JVM tests for parsers, dedupe, phrases, UPI QR and history grouping. Run: ./gradlew testDebugUnitTest */
 class ParserTest {
     private fun check(name: String, got: Any?, want: Any?) = assertEquals(name, want, got)
     private fun sms(sender: String, body: String) = SmsParser.parse(sender, body)?.payment?.amount
@@ -69,6 +69,49 @@ class ParserTest {
     check("D 80 after 4 min is new", d.shouldAnnounce(80.0, Dedupe.Channel.APP, "Google Pay", null), true)
     t = 310_000
     check("D different amount", d.shouldAnnounce(81.0, Dedupe.Channel.SMS, "Bank SMS (SBIUPI)", null), true)
+
+
+    // --- Phrases ---
+    check("P hi whole", Phrases.sentence("hi", 500.0), "500 रुपये प्राप्त हुए")
+    check("P hi paise", Phrases.sentence("hi", 120.5), "120 रुपये 50 पैसे प्राप्त हुए")
+    check("P en", Phrases.sentence("en", 99.99), "Received 99 rupees and 99 paise")
+    check("P float edge 0.29", Phrases.split(0.29), 0L to 29L)
+    check("P rounding 99.995", Phrases.split(99.995), 100L to 0L)
+    check("P unknown lang -> default", Phrases.byCode("xx").code, "hi")
+    check("P next", Phrases.next("hi").code, "en")
+    check("P next wraps", Phrases.next("en").code, "hi")
+
+    // --- UPI QR ---
+    check("Q valid", UpiQr.isValidVpa("shop.name@ybl"), true)
+    check("Q valid digits", UpiQr.isValidVpa("9876543210@paytm"), true)
+    check("Q invalid no at", UpiQr.isValidVpa("shopname"), false)
+    check("Q invalid space", UpiQr.isValidVpa("shop name@ybl"), false)
+    check("Q invalid empty handle", UpiQr.isValidVpa("shop@"), false)
+    check("Q uri", UpiQr.uri("shop@ybl", "Sharma Store & Co"), "upi://pay?pa=shop%40ybl&pn=Sharma%20Store%20%26%20Co&cu=INR")
+    check("Q uri default name", UpiQr.uri("shop@ybl", " "), "upi://pay?pa=shop%40ybl&pn=Shop&cu=INR")
+
+    // --- History grouping (IST) ---
+    val tz = java.util.TimeZone.getTimeZone("Asia/Kolkata")
+    fun at(s: String) = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").apply { timeZone = tz }.parse(s).time
+    val now2 = at("2026-11-26 23:30")
+    fun rec(id: Long, t: String, amt: Double, payer: String?) = PaymentRecord(id, at(t), amt, "PhonePe", payer, "app", null)
+    val recs = listOf(
+        rec(5, "2026-11-26 22:10", 500.0, "Ramesh"),
+        rec(4, "2026-11-26 00:05", 20.0, null),
+        rec(3, "2026-11-25 23:59", 100.0, "Suresh"),
+        rec(2, "2026-11-25 09:00", 50.5, ""),
+        rec(1, "2026-11-20 12:00", 10.0, "Anil"),
+    )
+    val g = History.groupByDay(recs, now2, tz)
+    check("H group count", g.size, 3)
+    check("H labels", g.map { it.label }, listOf("Today", "Yesterday", "Fri, 20 Nov 2026"))
+    check("H today total", g[0].total, 520.0)
+    check("H yesterday items", g[1].items.map { it.id }, listOf(3L, 2L))
+    check("H yesterday total", g[1].total, 150.5)
+    check("H name payer", History.displayName(recs[0]), "Ramesh")
+    check("H name fallback null", History.displayName(recs[1]), "PhonePe")
+    check("H name fallback blank", History.displayName(recs[3]), "PhonePe")
+    check("H empty", History.groupByDay(emptyList(), now2, tz).size, 0)
 
         }
 }

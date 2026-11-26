@@ -57,7 +57,7 @@ class PaymentListenerService : NotificationListenerService() {
 
         if (!Dedupe.shared.shouldAnnounce(payment.amount, Dedupe.Channel.APP, payment.source, null)) return
 
-        store.addPayment(payment, test = false)
+        store.addPayment(payment, "app")
         Speaker.announce(this, payment.amount, store.language)
     }
 }

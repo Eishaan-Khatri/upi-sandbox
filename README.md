@@ -12,9 +12,13 @@ No server, no KYC, no bank tie-up. It only reads notifications that are already 
   whitelist of payment-app package names (so a random app can't fake a payment).
 - `PaymentParser` pulls the ₹ amount out of "received / credited / paid you" notifications and
   skips "you paid", requests, cashback, offers, failures and debits.
-- `Speaker` uses the phone's built-in text-to-speech (Hindi if installed, otherwise English).
-- `Store` keeps today's total, the last 20 payments and the last 15 raw payment-app
-  notifications (shown on screen so we can fix the parser when an app changes its wording).
+- `PaymentDb` (SQLite on the phone) keeps every payment; the screen shows the last 30 days grouped
+  by date (Today / Yesterday / date) with payer name, time, amount and a day total.
+- `Store` keeps settings and the last 15 raw payment notifications (for fixing the parser).
+- Optional shop QR: set the shop's UPI ID in the setup panel and a standard `upi://pay` QR is shown.
+- Voices: `Phrases` holds the sentence per language (add a language = add one entry);
+  `VoiceEngine` lets recorded or custom voices plug in later. Today: phone text-to-speech.
+- The app has **no internet permission**: payment data cannot leave the phone.
 - Bank SMS backup (setup panel, off by default): only SMS from bank headers like `AX-HDFCBK`
   (never phone numbers), credits only. One payment is spoken once even if both the app alert and
   the bank SMS arrive (matched by UPI ref, or same amount within 2 minutes).

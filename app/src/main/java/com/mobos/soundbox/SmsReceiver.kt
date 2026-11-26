@@ -32,7 +32,7 @@ class SmsReceiver : BroadcastReceiver() {
                 if (credit == null) continue
                 val p = credit.payment
                 if (!Dedupe.shared.shouldAnnounce(p.amount, Dedupe.Channel.SMS, p.source, credit.ref)) continue
-                store.addPayment(p, test = false)
+                store.addPayment(p, "sms", credit.ref)
                 Speaker.announce(context, p.amount, store.language)
             }
         } catch (_: Exception) {
