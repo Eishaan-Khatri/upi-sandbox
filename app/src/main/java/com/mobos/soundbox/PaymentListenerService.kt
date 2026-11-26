@@ -8,6 +8,9 @@ import android.service.notification.StatusBarNotification
 /**
  * Android calls this for every notification once the user grants
  * "Notification access". We only look at whitelisted UPI apps.
+ *
+ * Read-only by design: this class never calls cancelNotification, snoozeNotification,
+ * notification actions/PendingIntents or anything call-related. Keep it that way.
  */
 class PaymentListenerService : NotificationListenerService() {
 

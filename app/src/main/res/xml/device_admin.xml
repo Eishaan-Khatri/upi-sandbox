@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Device Owner needs no extra admin policies: no wiping, no password rules, no locking. -->
 <device-admin>
-    <uses-policies>
-        <limit-password />
-        <force-lock />
-        <wipe-data />
-        <disable-keyguard-features />
-    </uses-policies>
+    <uses-policies />
 </device-admin>

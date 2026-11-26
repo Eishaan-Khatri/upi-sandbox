@@ -32,6 +32,7 @@ class MainActivity : Activity() {
     private lateinit var store: Store
     private lateinit var status: TextView
     private lateinit var accessButton: Button
+    private lateinit var accessNote: TextView
     private lateinit var total: TextView
     private lateinit var last: TextView
     private lateinit var langButton: Button
@@ -78,6 +79,12 @@ class MainActivity : Activity() {
         col.addView(status)
         accessButton = button("Give notification access") { openNotificationAccess() }
         col.addView(accessButton)
+        accessNote = label(
+            "Android shows one standard warning for every notification app. This app only reads " +
+                "payment alerts from UPI apps. It never dismisses, taps or answers anything, and " +
+                "nothing leaves the phone.", 13f
+        ).apply { setTextColor(Color.DKGRAY) }
+        col.addView(accessNote)
 
         col.addView(label("Today", 16f).apply { setPadding(0, dp(20), 0, 0) })
         total = label("₹0", 48f, bold = true).apply { setTextColor(Color.rgb(0, 128, 60)) }
@@ -186,6 +193,7 @@ class MainActivity : Activity() {
                       else "❌ Notification access is OFF. Tap the button below and turn on UPI Soundbox."
         status.setTextColor(if (granted) Color.rgb(0, 128, 60) else Color.RED)
         accessButton.visibility = if (granted) View.GONE else View.VISIBLE
+        accessNote.visibility = accessButton.visibility
 
         total.text = "₹" + money(store.todayTotal) + "   (${store.todayCount})"
         val hindiNote = if (Speaker.hindiAvailable == false) " (Hindi voice not installed, using English)" else ""
