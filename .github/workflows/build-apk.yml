@@ -32,7 +32,7 @@ jobs:
       - name: Build APKs
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-        run: ./gradlew --no-daemon assembleDebug assembleRelease
+        run: ./gradlew --no-daemon testDebugUnitTest assembleDebug assembleRelease
 
       - name: Make Device Owner setup QR
         run: |

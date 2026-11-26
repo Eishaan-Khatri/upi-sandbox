@@ -15,6 +15,9 @@ No server, no KYC, no bank tie-up. It only reads notifications that are already 
 - `Speaker` uses the phone's built-in text-to-speech (Hindi if installed, otherwise English).
 - `Store` keeps today's total, the last 20 payments and the last 15 raw payment-app
   notifications (shown on screen so we can fix the parser when an app changes its wording).
+- Bank SMS backup (setup panel, off by default): only SMS from bank headers like `AX-HDFCBK`
+  (never phone numbers), credits only. One payment is spoken once even if both the app alert and
+  the bank SMS arrive (matched by UPI ref, or same amount within 2 minutes).
 - Sticky "today's collection" notifications are ignored, so totals are never announced as payments.
 - Tap the "UPI Soundbox" title 7 times for the setup panel: kiosk on/off, settings, open UPI apps,
   and the raw notifications seen (to fix the parser when an app changes its wording).

@@ -3,6 +3,7 @@ package com.mobos.soundbox
 import android.app.Activity
 import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
@@ -41,6 +42,7 @@ class MainActivity : Activity() {
     private lateinit var ownerStatus: TextView
     private lateinit var kioskButton: Button
     private lateinit var removeOwnerButton: Button
+    private lateinit var smsButton: Button
     private lateinit var seenList: TextView
     private var titleTaps = 0
     private val handler = Handler(Looper.getMainLooper())
@@ -146,6 +148,8 @@ class MainActivity : Activity() {
             refresh()
         }
         panel.addView(kioskButton)
+        smsButton = button("") { toggleSms() }
+        panel.addView(smsButton)
         panel.addView(button("Notification access settings") { openNotificationAccess() })
         panel.addView(button("Phone Settings") { open(Intent(Settings.ACTION_SETTINGS)) })
         panel.addView(button("Battery settings (keep app running)") {
@@ -168,6 +172,27 @@ class MainActivity : Activity() {
         seenList = label("", 12f).apply { setTextColor(Color.DKGRAY) }
         panel.addView(seenList)
         return panel
+    }
+
+    private fun hasSmsPermission() =
+        checkSelfPermission(android.Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
+
+    private fun toggleSms() {
+        if (store.smsEnabled) {
+            store.smsEnabled = false
+        } else {
+            store.smsEnabled = true
+            if (!hasSmsPermission() && !Kiosk.grantSmsPermission(this)) {
+                requestPermissions(arrayOf(android.Manifest.permission.RECEIVE_SMS), REQ_SMS)
+            }
+        }
+        refresh()
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQ_SMS && !hasSmsPermission()) store.smsEnabled = false
+        refresh()
     }
 
     private fun openNotificationAccess() =
@@ -228,6 +253,11 @@ class MainActivity : Activity() {
         kioskButton.visibility = if (owner) View.VISIBLE else View.GONE
         kioskButton.text = if (store.kioskEnabled) "Unlock kiosk (to set up apps)" else "Lock kiosk again"
         removeOwnerButton.visibility = if (owner) View.VISIBLE else View.GONE
+        smsButton.text = "Bank SMS backup: " + when {
+            !store.smsEnabled -> "OFF"
+            hasSmsPermission() -> "ON"
+            else -> "ON, but SMS permission is missing (tap twice to ask again)"
+        }
 
         val seen = store.seenLog()
         seenList.text = buildString {
@@ -249,6 +279,10 @@ class MainActivity : Activity() {
     private fun money(v: Double): String =
         if (v == Math.floor(v)) String.format(Locale.US, "%,d", v.toLong())
         else String.format(Locale.US, "%,.2f", v)
+
+    companion object {
+        private const val REQ_SMS = 1
+    }
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 

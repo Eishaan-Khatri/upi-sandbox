@@ -15,8 +15,6 @@ import android.service.notification.StatusBarNotification
 class PaymentListenerService : NotificationListenerService() {
 
     private lateinit var store: Store
-    /** "package|amount" -> last time announced, to skip repeated/updated notifications. */
-    private val recentlyAnnounced = HashMap<String, Long>()
 
     override fun onCreate() {
         super.onCreate()
@@ -57,11 +55,7 @@ class PaymentListenerService : NotificationListenerService() {
         store.logSeen(pkg, title, text, payment != null)
         if (payment == null) return
 
-        val key = "$pkg|${payment.amount}"
-        val now = System.currentTimeMillis()
-        val last = recentlyAnnounced[key]
-        if (last != null && now - last < 15_000) return
-        recentlyAnnounced[key] = now
+        if (!Dedupe.shared.shouldAnnounce(payment.amount, Dedupe.Channel.APP, payment.source, null)) return
 
         store.addPayment(payment, test = false)
         Speaker.announce(this, payment.amount, store.language)

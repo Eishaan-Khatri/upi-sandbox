@@ -57,6 +57,19 @@ object Kiosk {
         setLocked(ctx, Store(ctx).kioskEnabled)
     }
 
+    /** On a Device Owner phone, grant the SMS permission without a popup. Returns true if granted. */
+    fun grantSmsPermission(ctx: Context): Boolean {
+        if (!isOwner(ctx)) return false
+        return try {
+            dpm(ctx).setPermissionGrantState(
+                admin(ctx), ctx.packageName, android.Manifest.permission.RECEIVE_SMS,
+                DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED
+            )
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     /** Kiosk on = status bar hidden and app pinned. Kiosk off = lets you open Settings / UPI apps. */
     fun setLocked(ctx: Context, locked: Boolean) {
         if (!isOwner(ctx)) return
