@@ -15,10 +15,6 @@ class Store(context: Context) {
         get() = prefs.getString("lang", "hi") ?: "hi"
         set(v) = prefs.edit().putString("lang", v).apply()
 
-    var smsEnabled: Boolean
-        get() = prefs.getBoolean("sms", false)
-        set(v) = prefs.edit().putBoolean("sms", v).apply()
-
     var kioskEnabled: Boolean
         get() = prefs.getBoolean("kiosk", true)
         set(v) = prefs.edit().putBoolean("kiosk", v).apply()

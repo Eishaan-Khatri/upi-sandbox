@@ -7,7 +7,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.os.Build
 import android.provider.Settings
 
 /**
@@ -25,6 +24,14 @@ object Kiosk {
     /** Called once right after QR setup, and again whenever the app starts as owner. */
     fun applyPolicies(ctx: Context) {
         if (!isOwner(ctx)) return
+        try {
+            applyPoliciesUnsafe(ctx)
+        } catch (_: Exception) {
+            // A failed policy must never crash the app, or the phone would boot-loop into a crash.
+        }
+    }
+
+    private fun applyPoliciesUnsafe(ctx: Context) {
         val dpm = dpm(ctx)
         val admin = admin(ctx)
 
@@ -46,9 +53,7 @@ object Kiosk {
             dpm.setGlobalSetting(admin, Settings.Global.STAY_ON_WHILE_PLUGGED_IN, "7")
         } catch (_: SecurityException) { }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            dpm.setKeyguardDisabled(admin, true)
-        }
+        dpm.setKeyguardDisabled(admin, true)
         setLocked(ctx, Store(ctx).kioskEnabled)
     }
 
@@ -56,9 +61,9 @@ object Kiosk {
     fun setLocked(ctx: Context, locked: Boolean) {
         if (!isOwner(ctx)) return
         Store(ctx).kioskEnabled = locked
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        try {
             dpm(ctx).setStatusBarDisabled(admin(ctx), locked)
-        }
+        } catch (_: Exception) { }
     }
 
     /** Pin the app on screen if we are owner and kiosk is on. Call from onResume. */
@@ -81,12 +86,14 @@ object Kiosk {
         exit(activity)
         val dpm = dpm(activity)
         val admin = admin(activity)
-        dpm.clearPackagePersistentPreferredActivities(admin, activity.packageName)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) dpm.setKeyguardDisabled(admin, false)
-        activity.packageManager.setComponentEnabledSetting(
-            ComponentName(activity, "${activity.packageName}.HomeAlias"),
-            PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP
-        )
-        dpm.clearDeviceOwnerApp(activity.packageName)
+        try {
+            dpm.clearPackagePersistentPreferredActivities(admin, activity.packageName)
+            dpm.setKeyguardDisabled(admin, false)
+            activity.packageManager.setComponentEnabledSetting(
+                ComponentName(activity, "${activity.packageName}.HomeAlias"),
+                PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP
+            )
+            dpm.clearDeviceOwnerApp(activity.packageName)
+        } catch (_: Exception) { }
     }
 }

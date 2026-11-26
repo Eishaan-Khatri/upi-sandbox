@@ -15,18 +15,28 @@ No server, no KYC, no bank tie-up. It only reads notifications that are already 
 - `Speaker` uses the phone's built-in text-to-speech (Hindi if installed, otherwise English).
 - `Store` keeps today's total, the last 20 payments and the last 15 raw payment-app
   notifications (shown on screen so we can fix the parser when an app changes its wording).
-- Bank SMS alerts are optional (off by default). When on, only SMS from bank-style sender IDs
-  such as `AX-HDFCBK` that mention UPI/VPA/account are counted.
+- Sticky "today's collection" notifications are ignored, so totals are never announced as payments.
+- Tap the "UPI Soundbox" title 7 times for the setup panel: kiosk on/off, settings, open UPI apps,
+  and the raw notifications seen (to fix the parser when an app changes its wording).
+
+## Dedicated soundbox (Device Owner, QR setup)
+
+1. Factory reset a spare phone.
+2. On the first welcome screen, tap the same spot 6 times. A QR scanner opens.
+3. Scan `setup-qr.png` from the "latest" GitHub release. Connect Wi-Fi if asked.
+4. The phone downloads the app, finishes setup and boots straight into the soundbox (kiosk).
 
 ## Install and test
 
-1. Download `app-debug.apk` from the latest "Build APK" run in GitHub Actions (Artifacts).
+1. Download `upi-soundbox.apk` from the "latest" GitHub release.
 2. Copy it to the phone and open it. Allow "Install unknown apps" when asked.
 3. Open **UPI Soundbox** and tap **Give notification access**, then turn it on.
+   On Android 13+, if the switch is greyed out: Settings → Apps → UPI Soundbox → ⋮ →
+   "Allow restricted settings", then try again.
 4. Tap **Test payment** to hear the voice. Turn the media volume up.
 5. Install a UPI app on the same phone (or log in to your business app) and receive ₹1.
-6. On Xiaomi/Oppo/Vivo/Realme, also tap **Keep running** and allow autostart / no battery
-   restriction, or the phone may kill the listener.
+6. On Xiaomi/Oppo/Vivo/Realme, allow autostart and "no battery restriction" for the app,
+   or the phone may kill the listener.
 
 For Hindi voice: Settings → Text-to-speech → Google TTS → Install voice data → Hindi.
 
